@@ -5,6 +5,7 @@ import com.iteratrlearning.examples.asynchronous.bank.AsyncCreditCheckProxy;
 import com.iteratrlearning.examples.asynchronous.bank.AsyncCustomerEndPoint;
 import com.iteratrlearning.examples.synchronous.account.BalanceReport;
 import com.iteratrlearning.examples.synchronous.credit_check.CreditReport;
+import org.apache.http.HttpStatus;
 
 import javax.servlet.AsyncContext;
 import javax.servlet.http.HttpServletResponse;
@@ -24,8 +25,8 @@ public class RetryingMortgageApplicationServlet extends AsyncCustomerEndPoint
             Integer.parseInt(context.getRequest().getParameter(AMOUNT_TO_BORROW));
         final CustomerHandler handler = new CustomerHandler(
             context, amountToBorrow, customer);
-        // TODO: you need to implement the error callback in order to be able to implement the retry
-        accountProxy.getBalance(customer, handler::onBalance, null);
+        
+        accountProxy.getBalance(customer, handler::onBalance, handler::onRequestFailed);
         creditProxy.getCreditReport(customer, handler::onCreditReport);
     }
 
@@ -34,6 +35,7 @@ public class RetryingMortgageApplicationServlet extends AsyncCustomerEndPoint
         private final AsyncContext context;
         private final int amountToBorrow;
         private final String customer;
+        private int attempts = 1;
 
         private BalanceReport balanceReport;
         private CreditReport creditReport;
@@ -80,7 +82,18 @@ public class RetryingMortgageApplicationServlet extends AsyncCustomerEndPoint
             }
         }
 
-        // TODO: implement the retry exercise
+        private void onRequestFailed(Throwable throwable) {
+            if (attempts < 10) {
+                attempts++;
+                accountProxy.getBalance(customer, this::onBalance, this::onRequestFailed);
+            } else {
+                final HttpServletResponse response = (HttpServletResponse) context.getResponse();
+                response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+                context.complete();
+            }
+
+        }
+
     }
 
 }

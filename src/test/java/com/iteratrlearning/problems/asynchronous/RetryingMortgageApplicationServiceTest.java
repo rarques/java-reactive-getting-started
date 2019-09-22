@@ -14,7 +14,6 @@ import java.net.URISyntaxException;
 import static org.apache.http.HttpStatus.SC_INTERNAL_SERVER_ERROR;
 import static org.junit.Assert.assertEquals;
 
-@Ignore
 public class RetryingMortgageApplicationServiceTest
 {
 
@@ -33,7 +32,7 @@ public class RetryingMortgageApplicationServiceTest
         shouldOfferMortgage("100", SC_INTERNAL_SERVER_ERROR);
 
         final int requestCount = FakeAccountService.REQUEST_COUNT.get();
-        assertEquals(requestCount, 10);
+        assertEquals(10, requestCount);
     }
 
     private static void shouldOfferMortgage(final String amountToBorrow, final int responseCode)
