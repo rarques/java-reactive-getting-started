@@ -4,40 +4,57 @@ import com.iteratrlearning.examples.promises.pricefinder.*;
 
 import static com.iteratrlearning.examples.promises.pricefinder.Currency.USD;
 
-public class PriceCatalogueThread
-{
+public class PriceCatalogueThread {
+
     private final Catalogue catalogue = new Catalogue();
     private final PriceFinder priceFinder = new PriceFinder();
     private final ExchangeService exchangeService = new ExchangeService();
+
+    private Price price;
+    private double exchangeRate;
 
     public static void main(String[] args) throws InterruptedException {
         new PriceCatalogueThread().findLocalDiscountedPrice(Currency.CHF, "Nexus7");
     }
 
-    private void findLocalDiscountedPrice(final Currency localCurrency, final String productName)
-    {
+    private void findLocalDiscountedPrice(final Currency localCurrency, final String productName) throws InterruptedException {
         long time = System.currentTimeMillis();
 
-        // TODO: Wrap up in Runnable
-        Product product = catalogue.productByName(productName);
-        Price price = priceFinder.findBestPrice(product);
+        // TODO: Extract runnables to specific classes with getters to retrieve the result.
 
-        // TODO: Wrap up in Runnable
-        double exchangeRate = exchangeService.lookupExchangeRate(USD, localCurrency);
+        Runnable productPriceTask = () -> {
+            Product product = catalogue.productByName(productName);
+            setPrice(priceFinder.findBestPrice(product));
+        };
 
-        // TODO: start threads
-        // TODO: join threads
+        Runnable exchangeTask = () -> {
+            setExchangeRate(exchangeService.lookupExchangeRate(USD, localCurrency));
+        };
 
-        // TODO: merge two results
+        Thread priceThread = new Thread(productPriceTask);
+        Thread exchangeThread = new Thread(exchangeTask);
+        priceThread.start();
+        exchangeThread.start();
+
+        priceThread.join();
+        exchangeThread.join();
+
         double localPrice = exchange(price, exchangeRate);
 
         System.out.printf("A %s will cost us %f %s\n", productName, localPrice, localCurrency);
         System.out.printf("It took us %d ms to calculate this\n", System.currentTimeMillis() - time);
     }
 
-    private double exchange(Price price, double exchangeRate)
-    {
+    private double exchange(Price price, double exchangeRate) {
         return Utils.round(price.getAmount() * exchangeRate);
+    }
+
+    private void setPrice(Price price) {
+        this.price = price;
+    }
+
+    private void setExchangeRate(double exchangeRate) {
+        this.exchangeRate = exchangeRate;
     }
 
 }
