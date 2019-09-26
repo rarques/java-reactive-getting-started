@@ -1,4 +1,11 @@
-## Example files for the title:  
+### Getting started with Reactive Programming in Java
+
+This repository contains the solutions I implement for the exercises of the O'Reilly course below as I make progress through the course. 
+
+**Other resource that I'm using to complement the learning:**
+
+* ![Asynchronous programming. Blocking I/O and non-blocking I/O](https://luminousmen.com/post/asynchronous-programming-blocking-and-non-blocking)
+
 	  
 # Learning Path: Getting Started with Reactive Programming—Asynchronous Java, Promises, Actors, and Reactive Streams, by Richard Warburton and Raoul-Gabriel Urma
 	  
