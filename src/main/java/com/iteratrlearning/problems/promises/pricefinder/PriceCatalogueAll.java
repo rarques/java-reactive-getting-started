@@ -1,47 +1,64 @@
 package com.iteratrlearning.problems.promises.pricefinder;
 
-import com.iteratrlearning.examples.promises.pricefinder.*;
+import static com.iteratrlearning.examples.promises.pricefinder.Currency.USD;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
+import static java.util.stream.Collectors.toList;
 
+import com.iteratrlearning.examples.promises.pricefinder.Catalogue;
+import com.iteratrlearning.examples.promises.pricefinder.Currency;
+import com.iteratrlearning.examples.promises.pricefinder.ExchangeService;
+import com.iteratrlearning.examples.promises.pricefinder.Price;
+import com.iteratrlearning.examples.promises.pricefinder.PriceFinder;
+import com.iteratrlearning.examples.promises.pricefinder.Product;
+import com.iteratrlearning.examples.promises.pricefinder.Utils;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-import static com.iteratrlearning.examples.promises.pricefinder.Currency.USD;
-import static java.util.stream.Collectors.toList;
 
 public class PriceCatalogueAll {
 
     private final PriceFinder priceFinder = new PriceFinder();
     private final ExchangeService exchangeService = new ExchangeService();
 
-    public static void main(String[] args)
-    {
+    public static void main(String[] args) {
 
         new PriceCatalogueAll().findAllDiscountedPrice(Currency.CHF, Catalogue.products);
     }
 
-    private void findAllDiscountedPrice(final Currency localCurrency, List<Product> products)
-    {
+    private void findAllDiscountedPrice(final Currency localCurrency, List<Product> products) {
         long time = System.currentTimeMillis();
 
-        // calculates total price for list of products
-        double totalPrice = 0;
-        for(Product product: products) {
-            Price price = priceFinder.findBestPrice(product);
+        CompletableFuture<Double> exchangeRateFuture = findExchangeRate(localCurrency);
 
-            double exchangeRate = exchangeService.lookupExchangeRate(USD, localCurrency);
+        List<CompletableFuture<Price>> pricesFuture = products.stream()
+                .map(this::findBestPrice)
+                .collect(toList());
 
-            double localPrice = exchange(price, exchangeRate);
-            totalPrice += localPrice;
+        CompletableFuture<List<Price>> listPricesFuture = sequence(pricesFuture);
 
-            System.out.printf("A %s will cost us %f %s\n", product.getName(), localPrice, localCurrency);
-        }
+        CompletableFuture<Double> totalPriceFuture = listPricesFuture
+                .thenCombine(exchangeRateFuture, (prices, exchangeRate) -> {
+                    return prices.stream()
+                            .mapToDouble(price -> exchange(price, exchangeRate))
+                            .sum();
+                });
+
+        Double totalPrice = totalPriceFuture.join();
 
         System.out.printf("The total price is %f %s\n", totalPrice, localCurrency);
         System.out.printf("It took us %d ms to calculate this\n", System.currentTimeMillis() - time);
     }
 
-    private double exchange(Price price, double exchangeRate)
-    {
+//    System.out.printf("A %s will cost us %f %s\n", product.getName(), localPrice, localCurrency);
+
+    private CompletableFuture<Price> findBestPrice(Product product) {
+        return supplyAsync(() -> priceFinder.findBestPrice(product));
+    }
+
+    private CompletableFuture<Double> findExchangeRate(Currency localCurrency) {
+        return supplyAsync(() -> exchangeService.lookupExchangeRate(USD, localCurrency));
+    }
+
+    private double exchange(Price price, double exchangeRate) {
         return Utils.round(price.getAmount() * exchangeRate);
     }
 
